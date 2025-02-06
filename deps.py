@@ -236,16 +236,6 @@ def roll(bundle: Bundle,
 
     (public_url, filename) = compute_bundle_parameters(bundle, host_machine, version)
 
-    # First do a quick check to avoid hitting S3 in most cases.
-    request = urllib.request.Request(public_url)
-    request.get_method = lambda: "HEAD"
-    try:
-        with urllib.request.urlopen(request) as r:
-            return
-    except urllib.request.HTTPError as e:
-        if e.code != 404:
-            raise CommandError("network error") from e
-
     artifact = build(bundle, build_machine, host_machine)
 
     if post is not None:
@@ -261,9 +251,6 @@ def roll(bundle: Bundle,
                            "--version=" + version,
                        ],
                        check=True)
-
-    # Use the shell for Windows compatibility, where npm generates a .bat script.
-    subprocess.run("cfcli purge " + public_url, shell=True, check=True)
 
     if activate and bundle == Bundle.TOOLCHAIN:
         configure_bootstrap_version(version)
@@ -285,7 +272,6 @@ def build(bundle: Bundle,
         if e.stderr is not None:
             print("\n=== stderr ===\n" + e.stderr, file=sys.stderr)
         sys.exit(1)
-
 
 class Builder:
     def __init__(self,
